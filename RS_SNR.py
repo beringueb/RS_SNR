@@ -55,39 +55,53 @@ def get_SN2(fisher):
     print('Full S/N : {:3.2f}'.format(SN2_ll.sum()**.5))
     return SN2_ll
     
-def plot_all(fisher,lmax):
+def plot_all(fisher_list,lmax,label_list):
     """ Plot the 4 cross spectra, their S/N per mode as well as the cumulative S/N."""
-    error_cov = np.linalg.solve(fisher,np.broadcast_to(np.identity(4),(lmax-1,4,4)))
-    SN_tt = cross_tt[:lmax-1] / error_cov[:,0,0]**.5
-    SN_ee = cross_ee[:lmax-1] / error_cov[:,1,1]**.5
-    SN_te = cross_te[:lmax-1] / error_cov[:,2,2]**.5
-    SN_et = cross_et[:lmax-1] / error_cov[:,3,3]**.5
-    SN2_full = get_SN2(fisher)
+    N_expe = len(fisher_list)
+    SN = np.zeros((N_expe,lmax-1,4))
+    color_list = ['r','orange','darkred','gold']
+    for ii,fisher in enumerate(fisher_list):
+        error_cov = np.linalg.solve(fisher,np.broadcast_to(np.identity(4),(lmax-1,4,4)))
+        SN_tt = cross_tt[:lmax-1] / error_cov[:,0,0]**.5
+        SN_ee = cross_ee[:lmax-1] / error_cov[:,1,1]**.5
+        SN_te = cross_te[:lmax-1] / error_cov[:,2,2]**.5
+        SN_et = cross_et[:lmax-1] / error_cov[:,3,3]**.5
+        SN[ii,...] = np.array([SN_tt,SN_ee,SN_te,SN_et]).T
+        _ = get_SN2(fisher)
+        
     labels = ['Primary T x RS T', 'Primary E x RS E','Primary T x RS E', 'Primary E x RS T']
-    SN = np.array([SN_tt,SN_ee,SN_te,SN_et]).T
     signals = np.array([cross_tt,cross_ee,cross_te,cross_et]).T[:lmax-1,:]
     ell = np.linspace(2,lmax,lmax-1)
     for kk in range(4):
         f,[ax1,ax2] = plt.subplots(2,1,sharex = True,gridspec_kw={'height_ratios': [2, 1]},figsize=(10,6))
         plt.subplots_adjust(wspace=0, hspace=0,left=0.1,right=0.9,top = 0.9,bottom=0.1)
-        ax1.plot(ell,signals[:,kk], c = 'k')
+        ax1.plot(ell,signals[:,kk], c = 'k', lw = 2)
         ax_cp = ax1.twinx()
-        ax_cp.plot(ell,SN[:,kk], c = 'r')
+        for ii in range(N_expe):
+            ax_cp.plot(ell,SN[ii,:,kk], c = color_list[ii], label = r'{:s}'.format(label_list[ii]), ls = 'dashed')
+            ax2.plot(ell,(np.cumsum(SN[ii,:,kk]**2))**.5, c = color_list[ii])
         ax_cp.tick_params(axis='y', labelcolor='r')
         ax_cp.set_ylabel(r'S/N per mode', fontsize = 14, color='r')
         ax1.set_ylabel(r'Cross spectra',fontsize = 14)
-        ax2.plot(ell,(np.cumsum(SN[:,kk]**2))**.5, c = 'r')
         ax2.set_xlim(2,LMAX)
         ax2.set_ylabel(r'Cumulative S/N', fontsize = 14)
         ax2.set_xlabel(r'$\ell$', fontsize = 18)
         plt.suptitle('{:s} spectrum'.format(labels[kk]), fontsize = 18)
-        ax2.text(LMAX-500,0,r'{:3.1f}$\sigma$'.format(((np.cumsum(SN[:,kk]**2))**.5)[-1]), fontsize = 16)   
+        props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+        ax_cp.legend(loc = 'best',prop={'size':16},fancybox = True, shadow = True) 
+        labels_legend = [r'{:3.1f}$\sigma$'.format(((np.cumsum(SN[ii,:,kk]**2))**.5)[-1]) for ii in range(N_expe)]
+        legend = ax2.legend(labels_legend,loc = 'center right',prop={'size':16},fancybox = True, shadow = True,handlelength=0)
+        for ii,text in enumerate(legend.get_texts()):
+            text.set_color(color_list[ii])
     plt.show()
 
 
 if __name__ == '__main__':
-    fisher_CCAT_PLANCK = get_fisher(CCAT_PLANCK)
-    plot_all(fisher_CCAT_PLANCK,LMAX) 
+    fisher_CCAT = get_fisher(CCAT)
+    fisher_PLANCK = get_fisher(PLANCK)
+    fisher_SO = get_fisher(SO_LAT)
+    fisher_tot = get_fisher(PLANCK_SO_CCAT)
+    plot_all([fisher_tot + .3/.7*fisher_PLANCK],LMAX, ['Combined']) 
     
         
-    
+# fisher_PLANCK_CCAT + (PLANCK.fsky - CCAT.fsky)/PLANCK.fsky * fisher_PLANCK
