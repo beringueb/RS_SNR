@@ -147,7 +147,7 @@ SO_LAT = Experiment(freqs_SO_LAT,fsky_SO_LAT,N_white_SO_LAT,beam_SO_LAT,N_red = 
 PLANCK_CCAT = PLANCK + CCAT
 PLANCK_SO = PLANCK + SO_LAT
 SO_CCAT = SO_LAT + CCAT
-PLANCK_SO_CCAT = PLANCK + SO_LAT + CCAT
+TOT = PLANCK + SO_LAT + CCAT
 
 if __name__ == '__main__':
     print(CCAT.fsky)
